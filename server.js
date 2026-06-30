@@ -16,9 +16,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { OAuth2Client } from 'google-auth-library';
 
- 
-
-
 const app = express();
 app.use(cors({
   origin: '*',
@@ -38,16 +35,16 @@ const DB_CONFIG = {
   connectionLimit:    10,
 };
 
-const JWT_SECRET        = process.env.JWT_SECRET        || 'CHANGE_ME_IN_PROD';
-const JWT_EXPIRES_IN    = process.env.JWT_EXPIRES_IN    || '7d';
-const STORE_CLIENT_KEY  = process.env.STORE_CLIENT_KEY  || 'STORE_BUILD_TOKEN_2024';
-// Ce header est envoyé UNIQUEMENT par la version compilée pour le Store.
-// La version APK directe ne l'envoie jamais.
-const STORE_HEADER      = 'x-client-type'; // valeur attendue : "store"
+const JWT_SECRET         = process.env.JWT_SECRET        || 'CHANGE_ME_IN_PROD';
+const JWT_EXPIRES_IN     = process.env.JWT_EXPIRES_IN    || '7d';
+const APP_GLOBAL_PASSWORD = process.env.APP_GLOBAL_PASSWORD || '1234'; // Le mot de passe requis pour entrer dans l'app
+
+const STORE_HEADER       = 'x-client-type'; 
 
 const pool = mysql.createPool(DB_CONFIG);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use('/public', express.static(path.join(__dirname, 'public')));
+
 // ── Middlewares ──────────────────────────────────────────────
 
 function requireAdmin(req, res, next) {
@@ -69,6 +66,7 @@ function requireAdmin(req, res, next) {
 
 /**
  * Vérifie le JWT et attache req.user
+ * Fonctionne indifféremment pour un compte anonyme ou un compte lié
  */
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -84,10 +82,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Détermine si la requête provient de la version Store.
- * Ajoute req.isStoreVersion = true/false
- */
 function detectClientType(req, _res, next) {
   req.isStoreVersion = req.headers[STORE_HEADER] === 'store';
   next();
@@ -95,152 +89,96 @@ function detectClientType(req, _res, next) {
 
 app.get('/', (_req, res) => res.json({ status: 'VagueTV API ✅' }));
 
-// ── Routes d'authentification ────────────────────────────────
 
-// ── Route : Servir le panel admin ─────────────────────────────
-// Accessible sur : http://votre-ip:3000/admin
- 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
- 
-// ── API Admin : GET toutes les chaînes (avec stream_url) ──────
- 
-app.get('/admin/api/channels', requireAdmin, async (req, res) => {
-  try {
-    const [channels] = await pool.execute(
-      'SELECT * FROM channels ORDER BY sort_order ASC, id ASC'
-    );
-    return res.json({ channels });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
- 
-// ── API Admin : POST ajouter une chaîne ───────────────────────
- 
-app.post('/admin/api/channels', requireAdmin, async (req, res) => {
-  const { name, category, stream_url, thumbnail_url,
-          is_premium_only, is_safe_for_store, is_active, sort_order } = req.body;
- 
-  if (!name || !category) {
-    return res.status(400).json({ error: 'name et category sont obligatoires.' });
-  }
- 
-  try {
-    const [result] = await pool.execute(
-      `INSERT INTO channels
-        (name, category, stream_url, thumbnail_url, is_premium_only, is_safe_for_store, is_active, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        name, category,
-        stream_url || null,
-        thumbnail_url || null,
-        is_premium_only ? 1 : 0,
-        is_safe_for_store !== false ? 1 : 0,
-        is_active !== false ? 1 : 0,
-        sort_order || 0,
-      ]
-    );
-    return res.status(201).json({ message: 'Chaîne créée.', id: result.insertId });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
- 
-// ── API Admin : PUT modifier une chaîne ──────────────────────
- 
-app.put('/admin/api/channels/:id', requireAdmin, async (req, res) => {
-  const channelId = parseInt(req.params.id, 10);
-  if (isNaN(channelId)) return res.status(400).json({ error: 'ID invalide.' });
- 
-  const { name, category, stream_url, thumbnail_url,
-          is_premium_only, is_safe_for_store, is_active, sort_order } = req.body;
- 
-  try {
-    await pool.execute(
-      `UPDATE channels SET
-        name=?, category=?, stream_url=?, thumbnail_url=?,
-        is_premium_only=?, is_safe_for_store=?, is_active=?, sort_order=?
-       WHERE id=?`,
-      [
-        name, category,
-        stream_url || null,
-        thumbnail_url || null,
-        is_premium_only ? 1 : 0,
-        is_safe_for_store !== false ? 1 : 0,
-        is_active !== false ? 1 : 0,
-        sort_order || 0,
-        channelId,
-      ]
-    );
-    return res.json({ message: 'Chaîne modifiée.' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
- 
-// ── API Admin : DELETE supprimer une chaîne ───────────────────
- 
-app.delete('/admin/api/channels/:id', requireAdmin, async (req, res) => {
-  const channelId = parseInt(req.params.id, 10);
-  if (isNaN(channelId)) return res.status(400).json({ error: 'ID invalide.' });
- 
-  try {
-    await pool.execute('DELETE FROM channels WHERE id=?', [channelId]);
-    return res.json({ message: 'Chaîne supprimée.' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
- 
-// ── API Admin : Login admin (retourne token de session) ───────
- 
-app.post('/admin/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (
-    username !== process.env.ADMIN_USERNAME ||
-    password !== process.env.ADMIN_PASSWORD
-  ) {
-    return res.status(401).json({ error: 'Identifiants incorrects.' });
-  }
-  // Token admin signé avec JWT
-  const adminToken = jwt.sign(
-    { role: 'admin', username },
-    JWT_SECRET,
-    { expiresIn: '8h' }
-  );
-  return res.json({ token: adminToken });
-});
+// ── 🆕 Nouvelles Routes d'Authentification ───────────────────
 
 /**
- * POST /api/auth/register
+ * POST /api/auth/unlock
+ * Déverrouille l'application via le mot de passe global.
+ * Crée un utilisateur anonyme en base de données pour stocker ses futurs favoris.
  */
 app.post(
-  '/api/auth/register',
+  '/api/auth/unlock',
+  [body('password').notEmpty()],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { password } = req.body;
+
+    // Vérification du mot de passe global de l'application
+    if (password !== APP_GLOBAL_PASSWORD) {
+      return res.status(401).json({ error: 'Mot de passe d’accès incorrect.' });
+    }
+
+    try {
+      // On génère un utilisateur anonyme unique en BDD
+      // (Idéalement, ton champ 'email' et 'password' dans la table 'users' doivent maintenant accepter la valeur NULL)
+      const [result] = await pool.execute(
+        'INSERT INTO users (email, password, is_premium) VALUES (NULL, NULL, 0)'
+      );
+      
+      const userId = result.insertId;
+
+      // On signe un jeton pour cet utilisateur anonyme (email = "")
+      const token = jwt.sign(
+        { id: userId, email: "", is_premium: false },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      return res.json({ 
+        token, 
+        is_premium: false,
+        message: "Accès déverrouillé, session anonyme créée." 
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Erreur serveur lors de la création de la session.' });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/link-account
+ * Optionnel : Permet de lier un e-mail et un mot de passe à la session anonyme actuelle
+ * pour ne pas perdre ses données.
+ */
+app.post(
+  '/api/auth/link-account',
+  requireAuth, // L'utilisateur doit posséder le jeton de sa session anonyme
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }),
+    body('password').isLength({ min: 6 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password } = req.body;
+    const userId = req.user.id;
+
     try {
       const hash = await bcrypt.hash(password, 12);
-      const [result] = await pool.execute(
-        'INSERT INTO users (email, password) VALUES (?, ?)',
-        [email, hash]
+      
+      // On met à jour l'utilisateur anonyme existant pour lui attribuer ses identifiants uniques
+      await pool.execute(
+        'UPDATE users SET email = ?, password = ? WHERE id = ?',
+        [email, hash, userId]
       );
-      return res.status(201).json({ message: 'Compte créé.', userId: result.insertId });
+
+      // On regénère un token propre contenant le nouvel e-mail mis à jour
+      const token = jwt.sign(
+        { id: userId, email: email, is_premium: !!req.user.is_premium },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      return res.json({ token, message: 'Compte sauvegardé et lié avec succès !' });
     } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY')
-        return res.status(409).json({ error: 'Email déjà utilisé.' });
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Cet e-mail est déjà associé à un autre compte.' });
+      }
       console.error(err);
       return res.status(500).json({ error: 'Erreur serveur.' });
     }
@@ -248,10 +186,11 @@ app.post(
 );
 
 /**
- * POST /api/auth/login
+ * POST /api/auth/login-linked
+ * Permet de se reconnecter à un compte précédemment sauvegardé (ex: sur un nouvel appareil)
  */
 app.post(
-  '/api/auth/login',
+  '/api/auth/login-linked',
   [body('email').isEmail(), body('password').notEmpty()],
   async (req, res) => {
     const errors = validationResult(req);
@@ -264,8 +203,9 @@ app.post(
         [email]
       );
       const user = rows[0];
-      if (!user || !(await bcrypt.compare(password, user.password)))
-        return res.status(401).json({ error: 'Identifiants incorrects.' });
+      if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Identifiants incorrects ou compte inexistant.' });
+      }
 
       const token = jwt.sign(
         { id: user.id, email: user.email, is_premium: !!user.is_premium },
@@ -280,126 +220,98 @@ app.post(
   }
 );
 
-/**
- * POST /api/auth/google
- * Body: { id_token: "..." }
- */
-app.post('/api/auth/google', async (req, res) => {
-  const { id_token } = req.body;
-  if (!id_token) return res.status(400).json({ error: 'id_token requis.' });
 
+// ── API Admin ────────────────────────────────────────────────
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+ 
+app.get('/admin/api/channels', requireAdmin, async (req, res) => {
   try {
-    // 1. Vérifier le token Google
-    const ticket = await googleClient.verifyIdToken({
-      idToken: id_token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const { email, sub: google_id, name, picture } = ticket.getPayload();
-
-    // 2. Chercher ou créer l'utilisateur
-    const [rows] = await pool.execute(
-      'SELECT id, email, is_premium FROM users WHERE email = ?',
-      [email]
-    );
-
-    let userId, isPremium;
-
-    if (rows.length > 0) {
-      // Utilisateur existant → on met à jour google_id si besoin
-      userId    = rows[0].id;
-      isPremium = rows[0].is_premium;
-      await pool.execute(
-        'UPDATE users SET google_id = ?, avatar_url = ? WHERE id = ?',
-        [google_id, picture, userId]
-      );
-    } else {
-      // Nouvel utilisateur → pas de mot de passe (NULL)
-      const [result] = await pool.execute(
-        'INSERT INTO users (email, google_id, avatar_url, password) VALUES (?, ?, ?, NULL)',
-        [email, google_id, picture]
-      );
-      userId    = result.insertId;
-      isPremium = false;
-    }
-
-    // 3. Retourner le même JWT que /api/auth/login
-    const token = jwt.sign(
-      { id: userId, email, is_premium: !!isPremium },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-    return res.json({ token, is_premium: !!isPremium });
-
+    const [channels] = await pool.execute('SELECT * FROM channels ORDER BY sort_order ASC, id ASC');
+    return res.json({ channels });
   } catch (err) {
-    console.error('Google Auth error:', err);
-    return res.status(401).json({ error: 'Token Google invalide.' });
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
+ 
+app.post('/admin/api/channels', requireAdmin, async (req, res) => {
+  const { name, category, stream_url, thumbnail_url, is_premium_only, is_safe_for_store, is_active, sort_order } = req.body;
+  if (!name || !category) return res.status(400).json({ error: 'name et category sont obligatoires.' });
+ 
+  try {
+    const [result] = await pool.execute(
+      `INSERT INTO channels (name, category, stream_url, thumbnail_url, is_premium_only, is_safe_for_store, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, category, stream_url || null, thumbnail_url || null, is_premium_only ? 1 : 0, is_safe_for_store !== false ? 1 : 0, is_active !== false ? 1 : 0, sort_order || 0]
+    );
+    return res.status(201).json({ message: 'Chaîne créée.', id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+ 
+app.put('/admin/api/channels/:id', requireAdmin, async (req, res) => {
+  const channelId = parseInt(req.params.id, 10);
+  if (isNaN(channelId)) return res.status(400).json({ error: 'ID invalide.' });
+  const { name, category, stream_url, thumbnail_url, is_premium_only, is_safe_for_store, is_active, sort_order } = req.body;
+ 
+  try {
+    await pool.execute(
+      `UPDATE channels SET name=?, category=?, stream_url=?, thumbnail_url=?, is_premium_only=?, is_safe_for_store=?, is_active=?, sort_order=? WHERE id=?`,
+      [name, category, stream_url || null, thumbnail_url || null, is_premium_only ? 1 : 0, is_safe_for_store !== false ? 1 : 0, is_active !== false ? 1 : 0, sort_order || 0, channelId]
+    );
+    return res.json({ message: 'Chaîne modifiée.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+ 
+app.delete('/admin/api/channels/:id', requireAdmin, async (req, res) => {
+  const channelId = parseInt(req.params.id, 10);
+  if (isNaN(channelId)) return res.status(400).json({ error: 'ID invalide.' });
+ 
+  try {
+    await pool.execute('DELETE FROM channels WHERE id=?', [channelId]);
+    return res.json({ message: 'Chaîne supprimée.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+ 
+app.post('/admin/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Identifiants incorrects.' });
+  }
+  const adminToken = jwt.sign({ role: 'admin', username }, JWT_SECRET, { expiresIn: '8h' });
+  return res.json({ token: adminToken });
+});
 
-// ── Route principale : GET /api/channels ────────────────────
+// ── Routes Fonctionnelles (Chaînes) ─────────────────────────
 
-/**
- * GET /api/channels
- *
- * Headers attendus :
- *   Authorization : Bearer <jwt>
- *   x-client-type : "store"   (optionnel, version Play Store uniquement)
- *
- * Logique :
- *  1. Authentification obligatoire (JWT).
- *  2. Si x-client-type === "store" → filtrer is_safe_for_store = 1 (pas de 18+).
- *  3. Si la chaîne est is_premium_only et que l'utilisateur n'est pas premium
- *     → retourner la chaîne SANS l'URL de stream (champ stream_url = null).
- *  4. L'URL de stream n'est retournée que si l'utilisateur a le droit.
- */
 app.get('/api/channels', requireAuth, detectClientType, async (req, res) => {
   try {
-    // Construire la requête SQL dynamiquement
-    let sql = `
-      SELECT
-        id,
-        name,
-        category,
-        thumbnail_url,
-        is_premium_only,
-        is_safe_for_store,
-        stream_url,
-        sort_order
-      FROM channels
-      WHERE is_active = 1
-    `;
-    const params = [];
-
-    // ── Filtre Store Version ──────────────────────────────────
-    if (req.isStoreVersion) {
-      sql += ' AND is_safe_for_store = 1';
-    }
-
+    let sql = `SELECT id, name, category, thumbnail_url, is_premium_only, is_safe_for_store, stream_url, sort_order FROM channels WHERE is_active = 1`;
+    if (req.isStoreVersion) sql += ' AND is_safe_for_store = 1';
     sql += ' ORDER BY sort_order ASC, id ASC';
 
-    const [channels] = await pool.execute(sql, params);
-
-    // ── Contrôle Premium ──────────────────────────────────────
+    const [channels] = await pool.execute(sql);
     const isPremium = req.user.is_premium;
 
-    const sanitized = channels.map((ch) => {
-      // Copie sans mutation directe
-      const item = {
-        id:                ch.id,
-        name:              ch.name,
-        category:          ch.category,
-        thumbnail_url:     ch.thumbnail_url,
-        is_premium_only:   !!ch.is_premium_only,
-        is_safe_for_store: !!ch.is_safe_for_store,
-        sort_order:        ch.sort_order,
-        // L'URL n'est fournie que si l'utilisateur a le droit
-        stream_url:
-          ch.is_premium_only && !isPremium
-            ? null   // ← accès refusé : le client affichera le BottomSheet VIP
-            : ch.stream_url,
-      };
-      return item;
-    });
+    const sanitized = channels.map((ch) => ({
+      id:                ch.id,
+      name:              ch.name,
+      category:          ch.category,
+      thumbnail_url:     ch.thumbnail_url,
+      is_premium_only:   !!ch.is_premium_only,
+      is_safe_for_store: !!ch.is_safe_for_store,
+      sort_order:        ch.sort_order,
+      stream_url:        ch.is_premium_only && !isPremium ? null : ch.stream_url,
+    }));
 
     return res.json({ channels: sanitized, is_store_version: req.isStoreVersion });
   } catch (err) {
@@ -408,27 +320,15 @@ app.get('/api/channels', requireAuth, detectClientType, async (req, res) => {
   }
 });
 
-/**
- * GET /api/channels/:id — Détail d'une chaîne (même logique)
- */
 app.get('/api/channels/:id', requireAuth, detectClientType, async (req, res) => {
   const channelId = parseInt(req.params.id, 10);
   if (isNaN(channelId)) return res.status(400).json({ error: 'ID invalide.' });
 
   try {
-    let sql = `
-      SELECT id, name, category, thumbnail_url,
-             is_premium_only, is_safe_for_store, stream_url, sort_order
-      FROM channels
-      WHERE id = ? AND is_active = 1
-    `;
-    const params = [channelId];
+    let sql = `SELECT id, name, category, thumbnail_url, is_premium_only, is_safe_for_store, stream_url, sort_order FROM channels WHERE id = ? AND is_active = 1`;
+    if (req.isStoreVersion) sql += ' AND is_safe_for_store = 1';
 
-    if (req.isStoreVersion) {
-      sql += ' AND is_safe_for_store = 1';
-    }
-
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.execute(sql, [channelId]);
     if (!rows.length) return res.status(404).json({ error: 'Chaîne introuvable.' });
 
     const ch = rows[0];
@@ -441,8 +341,7 @@ app.get('/api/channels/:id', requireAuth, detectClientType, async (req, res) => 
       thumbnail_url:     ch.thumbnail_url,
       is_premium_only:   !!ch.is_premium_only,
       is_safe_for_store: !!ch.is_safe_for_store,
-      stream_url:
-        ch.is_premium_only && !isPremium ? null : ch.stream_url,
+      stream_url:        ch.is_premium_only && !isPremium ? null : ch.stream_url,
     });
   } catch (err) {
     console.error(err);
@@ -450,15 +349,10 @@ app.get('/api/channels/:id', requireAuth, detectClientType, async (req, res) => 
   }
 });
 
-/**
- * PATCH /api/user/premium — Activer le premium (appelé après paiement externe)
- * Sécurisé par un secret partagé entre le webhook et l'API.
- */
 app.patch('/api/user/premium', async (req, res) => {
   const webhookSecret = req.headers['x-webhook-secret'];
-  if (webhookSecret !== process.env.WEBHOOK_SECRET) {
-    return res.status(403).json({ error: 'Accès refusé.' });
-  }
+  if (webhookSecret !== process.env.WEBHOOK_SECRET) return res.status(403).json({ error: 'Accès refusé.' });
+  
   const { user_id, payment_ref, plan } = req.body;
   if (!user_id) return res.status(400).json({ error: 'user_id requis.' });
 
@@ -485,7 +379,6 @@ app.patch('/api/user/premium', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`\n🚀 VagueTV API → http://localhost:${PORT}`);
-  console.log(`📱 Émulateur Android → http://10.0.2.2:${PORT}`);
   try {
     const conn = await pool.getConnection();
     console.log('✅ MySQL connecté (XAMPP)');
