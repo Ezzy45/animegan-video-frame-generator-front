@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VagueTV Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D0F14;--bg2:#171B24;--bg3:#1E2433;--bg4:#252D3D;
+  --acc:#00C8FF;--gold:#FFD700;--red:#FF3B5C;--green:#00E676;
+  --text:#F0F4FF;--text2:#8A92A6;--text3:#4A5568;--border:#2A3347;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min-height:100vh}
+
+/* ── Login ── */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px}
+.login-logo{text-align:center;font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:8px}
+.login-logo span{color:var(--acc)}
+.login-sub{text-align:center;color:var(--text2);font-size:13px;margin-bottom:24px}
+.login-err{background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.3);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--red);margin-bottom:12px;display:none}
+
+/* ── Layout ── */
+.app{display:none;flex-direction:column;min-height:100vh}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.logo{font-size:16px;font-weight:600;letter-spacing:1px}
+.logo span{color:var(--acc)}
+.header-right{display:flex;align-items:center;gap:10px}
+.admin-badge{background:rgba(0,200,255,0.1);border:1px solid rgba(0,200,255,0.3);color:var(--acc);padding:3px 10px;border-radius:20px;font-size:11px}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-n{font-size:24px;font-weight:600}
+.stat-l{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;align-items:center}
+
+/* ── Table ── */
+.table-wrap{padding:0 20px 20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:12px;overflow:hidden;border:1px solid var(--border);font-size:13px}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:500;color:var(--text2);border-bottom:1px solid var(--border);background:var(--bg3);text-transform:uppercase;letter-spacing:0.5px}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.b-vip{background:rgba(255,215,0,0.12);color:var(--gold);border:1px solid rgba(255,215,0,0.25)}
+.b-adult{background:rgba(255,59,92,0.12);color:var(--red);border:1px solid rgba(255,59,92,0.25)}
+.b-free{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
+.url-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-size:11px;font-family:monospace}
+.actions{display:flex;gap:4px}
+.empty{text-align:center;padding:48px;color:var(--text3)}
+
+/* ── Modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:16px;color:var(--acc)}
+.fr{margin-bottom:12px}
+.fr label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.fr input,.fr select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;outline:none}
+.fr input:focus,.fr select:focus{border-color:var(--acc)}
+.fr input::placeholder{color:var(--text3)}
+.fr.chk{display:flex;align-items:center;gap:8px}
+.fr.chk label{margin:0;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text)}
+.fr.chk input[type=checkbox]{width:auto;accent-color:var(--acc)}
+.mfooter{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ── Elements ── */
+.inp{padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;outline:none}
+.inp:focus{border-color:var(--acc)}
+.inp::placeholder{color:var(--text3)}
+.sel{padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;outline:none}
+.btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;cursor:pointer}
+.btn:hover{background:var(--bg4);border-color:var(--acc)}
+.btn-acc{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:600}
+.btn-acc:hover{background:#00b8ef}
+.btn-sm{padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer}
+.btn-sm:hover{background:var(--bg4);color:var(--text)}
+.btn-del{color:var(--red);border-color:rgba(255,59,92,0.3)}
+.btn-del:hover{background:rgba(255,59,92,0.1)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;display:none;z-index:200;min-width:220px}
+.toast.show{display:block}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--acc);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ───────────────────────────────────────────── -->
+<div class="login-wrap" id="login-page">
+  <div class="login-box">
+    <div class="login-logo">Vague<span>TV</span></div>
+    <div class="login-sub">Panneau d'administration</div>
+    <div class="login-err" id="login-err"></div>
+    <div class="fr"><label>Nom d'utilisateur</label>
+      <input class="inp" id="l-user" placeholder="admin" style="width:100%" autocomplete="username">
+    </div>
+    <div class="fr"><label>Mot de passe</label>
+      <input class="inp" id="l-pass" type="password" placeholder="••••••••" style="width:100%" autocomplete="current-password">
+    </div>
+    <button class="btn btn-acc" style="width:100%;margin-top:8px" onclick="doLogin()">Se connecter</button>
+  </div>
+</div>
+
+<!-- ── APP ────────────────────────────────────────────── -->
+<div class="app" id="app">
+
+  <div class="header">
+    <div class="logo">Vague<span>TV</span> <span style="color:var(--text2);font-size:12px;font-weight:400">Admin</span></div>
+    <div class="header-right">
+      <span class="admin-badge" id="admin-name">admin</span>
+      <button class="btn" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n" style="color:var(--acc)" id="s-total">0</div><div class="stat-l">Total chaînes</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--green)" id="s-free">0</div><div class="stat-l">Gratuites</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--gold)" id="s-premium">0</div><div class="stat-l">Premium VIP</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--red)" id="s-adult">0</div><div class="stat-l">Adult 18+</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="inp" id="search" placeholder="🔍 Rechercher..." oninput="renderTable()" style="flex:1;min-width:150px">
+    <select class="sel" id="filter-cat" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+    <select class="sel" id="filter-type" onchange="renderTable()">
+      <option value="">Tous types</option>
+      <option value="free">Gratuit</option>
+      <option value="premium">VIP</option>
+      <option value="adult">Adult 18+</option>
+    </select>
+    <button class="btn btn-acc" onclick="openModal()">+ Nouvelle chaîne</button>
+    <button class="btn" onclick="refreshChannels()">⟳ Actualiser</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Nom</th><th>Catégorie</th><th>Type</th>
+          <th>Store</th><th>Active</th><th>Stream URL</th><th>Ordre</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="9"><div class="empty"><span class="spinner"></span> Chargement...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Modal ──────────────────────────────────────────── -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">+ Nouvelle chaîne</h3>
+    <input type="hidden" id="f-id">
+    <div class="fr"><label>Nom *</label><input id="f-name" placeholder="Ex: RTG Guinée"></div>
+    <div class="fr"><label>Catégorie *</label>
+      <select id="f-cat">
+        <option>News</option><option>Sports</option><option>Music</option>
+        <option>Divertissement</option><option>Cinéma</option><option>Premium</option>
+        <option>Adult</option><option>Autre</option>
+      </select>
+    </div>
+    <div class="fr"><label>URL Stream HLS/M3U8</label><input id="f-url" placeholder="https://...m3u8"></div>
+    <div class="fr"><label>URL Thumbnail</label><input id="f-thumb" placeholder="https://...jpg"></div>
+    <div class="fr"><label>Ordre d'affichage</label><input id="f-order" type="number" value="0"></div>
+    <div class="fr chk"><input type="checkbox" id="f-premium"><label for="f-premium">Chaîne Premium VIP</label></div>
+    <div class="fr chk"><input type="checkbox" id="f-store" checked><label for="f-store">Safe pour le Play Store (pas de contenu 18+)</label></div>
+    <div class="fr chk"><input type="checkbox" id="f-active" checked><label for="f-active">Active (visible dans l'app)</label></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-acc" onclick="saveChannel()" id="save-btn">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────
+// L'admin.html est servi par le même serveur Node.js
+// donc on utilise window.location.origin comme base URL
+const API_BASE = window.location.origin;
+
+let channels = [];
+let editId = null;
+let adminToken = sessionStorage.getItem('admin_token') || '';
+
+const $ = id => document.getElementById(id);
+
+// ── Auth ──────────────────────────────────────────────────────
+
+async function doLogin() {
+  const username = $('l-user').value.trim();
+  const password = $('l-pass').value;
+  if (!username || !password) { showLoginErr('Remplissez tous les champs.'); return; }
+
+  try {
+    const r = await fetch(API_BASE + '/admin/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const d = await r.json();
+    if (!r.ok) { showLoginErr(d.error || 'Erreur de connexion.'); return; }
+
+    adminToken = d.token;
+    sessionStorage.setItem('admin_token', adminToken);
+    $('admin-name').textContent = username;
+    showApp();
+    loadChannels();
+  } catch (e) {
+    showLoginErr('Impossible de contacter le serveur.');
+  }
+}
+
+function doLogout() {
+  adminToken = '';
+  sessionStorage.removeItem('admin_token');
+  channels = [];
+  $('login-page').style.display = 'flex';
+  $('app').style.display = 'none';
+}
+
+function showLoginErr(msg) {
+  const el = $('login-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showApp() {
+  $('login-page').style.display = 'none';
+  $('app').style.display = 'flex';
+}
+
+// Vérifier si déjà connecté
+if (adminToken) { showApp(); loadChannels(); }
+
+// Enter sur le champ password
+$('l-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── API calls ─────────────────────────────────────────────────
+
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + adminToken,
+  };
+}
+
+async function loadChannels() {
+  $('tbody').innerHTML = '<tr><td colspan="9"><div class="empty"><span class="spinner"></span> Chargement...</div></td></tr>';
+  try {
+    const r = await fetch(API_BASE + '/admin/api/channels', { headers: authHeaders() });
+    if (r.status === 401) { doLogout(); return; }
+    const d = await r.json();
+    channels = d.channels || [];
+    updateStats();
+    renderTable();
+    populateCats();
+  } catch (e) {
+    showToast('✗ Erreur: ' + e.message);
+  }
+}
+
+function refreshChannels() { loadChannels(); showToast('⟳ Actualisation...'); }
+
+// ── Stats ─────────────────────────────────────────────────────
+
+function updateStats() {
+  $('s-total').textContent   = channels.length;
+  $('s-free').textContent    = channels.filter(c => !c.is_premium_only && c.is_safe_for_store).length;
+  $('s-premium').textContent = channels.filter(c => c.is_premium_only).length;
+  $('s-adult').textContent   = channels.filter(c => !c.is_safe_for_store).length;
+}
+
+function populateCats() {
+  const sel = $('filter-cat');
+  const cats = [...new Set(channels.map(c => c.category))].sort();
+  sel.innerHTML = '<option value="">Toutes catégories</option>';
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+}
+
+// ── Table ─────────────────────────────────────────────────────
+
+function badge(c) {
+  if (!c.is_safe_for_store) return '<span class="badge b-adult">18+</span>';
+  if (c.is_premium_only)    return '<span class="badge b-vip">★ VIP</span>';
+  return '<span class="badge b-free">Gratuit</span>';
+}
+
+function renderTable() {
+  const q    = $('search').value.toLowerCase();
+  const cat  = $('filter-cat').value;
+  const type = $('filter-type').value;
+
+  const list = channels.filter(c => {
+    const mq   = !q    || c.name.toLowerCase().includes(q) || c.category.toLowerCase().includes(q);
+    const mc   = !cat  || c.category === cat;
+    const mt   = !type
+      || (type === 'free'    && !c.is_premium_only && c.is_safe_for_store)
+      || (type === 'premium' && c.is_premium_only)
+      || (type === 'adult'   && !c.is_safe_for_store);
+    return mq && mc && mt;
+  });
+
+  const tb = $('tbody');
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty">Aucune chaîne trouvée</div></td></tr>'; return; }
+
+  tb.innerHTML = list.map(c => `
+    <tr>
+      <td style="color:var(--text3);font-size:11px">${c.id}</td>
+      <td style="font-weight:500">${c.name}</td>
+      <td style="color:var(--text2)">${c.category}</td>
+      <td>${badge(c)}</td>
+      <td style="font-size:12px">${c.is_safe_for_store ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>'}</td>
+      <td style="font-size:12px">${c.is_active ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text3)">✗</span>'}</td>
+      <td class="url-cell" title="${c.stream_url || ''}">${c.stream_url || '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:var(--text3)">${c.sort_order || 0}</td>
+      <td><div class="actions">
+        <button class="btn-sm" onclick="editChannel(${c.id})" title="Modifier">✏️</button>
+        <button class="btn-sm btn-del" onclick="deleteChannel(${c.id})" title="Supprimer">✕</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+
+function openModal(ch) {
+  editId = ch ? ch.id : null;
+  $('modal-title').textContent = ch ? '✏️ Modifier la chaîne' : '+ Nouvelle chaîne';
+  $('f-name').value    = ch?.name || '';
+  $('f-cat').value     = ch?.category || 'News';
+  $('f-url').value     = ch?.stream_url || '';
+  $('f-thumb').value   = ch?.thumbnail_url || '';
+  $('f-order').value   = ch?.sort_order || 0;
+  $('f-premium').checked = !!ch?.is_premium_only;
+  $('f-store').checked   = ch ? !!ch.is_safe_for_store : true;
+  $('f-active').checked  = ch ? !!ch.is_active : true;
+  $('modal').classList.add('open');
+}
+
+function closeModal() { $('modal').classList.remove('open'); }
+
+async function saveChannel() {
+  const name = $('f-name').value.trim();
+  if (!name) { showToast('⚠ Le nom est obligatoire'); return; }
+
+  const body = {
+    name, category: $('f-cat').value,
+    stream_url:    $('f-url').value.trim()   || null,
+    thumbnail_url: $('f-thumb').value.trim() || null,
+    sort_order:    parseInt($('f-order').value) || 0,
+    is_premium_only:   $('f-premium').checked,
+    is_safe_for_store: $('f-store').checked,
+    is_active:         $('f-active').checked,
+  };
+
+  $('save-btn').textContent = '...';
+
+  try {
+    const url    = editId ? `/admin/api/channels/${editId}` : '/admin/api/channels';
+    const method = editId ? 'PUT' : 'POST';
+    const r = await fetch(API_BASE + url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showToast(editId ? '✓ Chaîne modifiée !' : '✓ Chaîne ajoutée !');
+    closeModal();
+    loadChannels();
+  } catch (e) {
+    showToast('✗ Erreur: ' + e.message);
+  } finally {
+    $('save-btn').textContent = 'Enregistrer';
+  }
+}
+
+function editChannel(id) { const ch = channels.find(c => c.id === id); if (ch) openModal(ch); }
+
+async function deleteChannel(id) {
+  const ch = channels.find(c => c.id === id);
+  if (!ch || !confirm('Supprimer "' + ch.name + '" définitivement ?')) return;
+  try {
+    const r = await fetch(API_BASE + '/admin/api/channels/' + id, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new Error('Erreur serveur');
+    showToast('✓ Chaîne supprimée');
+    loadChannels();
+  } catch (e) {
+    showToast('✗ Erreur: ' + e.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+$('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
+</script>
+</body>
+</html>

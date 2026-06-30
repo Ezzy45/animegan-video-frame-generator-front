@@ -1,0 +1,292 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D0F14;--bg2:#171B24;--bg3:#1E2433;--bg4:#252D3D;
+  --acc:#00C8FF;--gold:#FFD700;--red:#FF3B5C;--green:#00E676;
+  --text:#F0F4FF;--text2:#8A92A6;--text3:#4A5568;
+  --border:#2A3347;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.logo{font-size:18px;font-weight:500;letter-spacing:1px}
+.logo span{color:var(--acc)}
+.conn{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inp{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:12px;outline:none}
+.inp:focus{border-color:var(--acc)}
+.inp::placeholder{color:var(--text3)}
+.status{font-size:11px;color:var(--text2);white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-n{font-size:24px;font-weight:500}
+.stat-n.acc{color:var(--acc)}
+.stat-n.green{color:var(--green)}
+.stat-n.gold{color:var(--gold)}
+.stat-n.red{color:var(--red)}
+.stat-l{font-size:11px;color:var(--text2);margin-top:3px}
+.toolbar{display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;align-items:center}
+.toolbar .inp{flex:1;min-width:150px;font-size:13px;padding:8px 12px}
+.sel{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;outline:none}
+.sel:focus{border-color:var(--acc)}
+.btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;cursor:pointer}
+.btn:hover{background:var(--bg4);border-color:var(--acc)}
+.btn-acc{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:500}
+.btn-acc:hover{background:#00b8ef;border-color:#00b8ef}
+.btn-sm{padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer}
+.btn-sm:hover{background:var(--bg4);color:var(--text)}
+.btn-del{color:var(--red);border-color:rgba(255,59,92,0.3)}
+.btn-del:hover{background:rgba(255,59,92,0.1);border-color:var(--red)}
+.table-wrap{padding:0 20px 20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:12px;overflow:hidden;border:1px solid var(--border);font-size:13px}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:500;color:var(--text2);border-bottom:1px solid var(--border);background:var(--bg3);text-transform:uppercase;letter-spacing:0.5px}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.b-vip{background:rgba(255,215,0,0.12);color:var(--gold);border:1px solid rgba(255,215,0,0.25)}
+.b-adult{background:rgba(255,59,92,0.12);color:var(--red);border:1px solid rgba(255,59,92,0.25)}
+.b-free{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
+.url-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-size:11px;font-family:var(--font-mono)}
+.empty{text-align:center;padding:48px;color:var(--text3)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:16px;color:var(--acc)}
+.fr{margin-bottom:12px}
+.fr label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.fr input,.fr select,.fr textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:13px;font-family:var(--font-sans);outline:none}
+.fr input:focus,.fr select:focus,.fr textarea:focus{border-color:var(--acc)}
+.fr input::placeholder{color:var(--text3)}
+.fr textarea{height:56px;resize:vertical}
+.fr.chk{display:flex;align-items:center;gap:8px}
+.fr.chk label{margin:0;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text)}
+.fr.chk input[type=checkbox]{width:auto;accent-color:var(--acc)}
+.mfooter{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;display:none;z-index:200;color:var(--text);min-width:200px}
+.toast.show{display:block}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--text3)}
+.dot.ok{background:var(--green)}
+.dot.err{background:var(--red)}
+.actions{display:flex;gap:4px}
+</style>
+
+<div class="header">
+  <div class="logo">Vague<span>TV</span> <span style="color:var(--text2);font-size:12px;font-weight:400">Admin Panel</span></div>
+  <div class="conn">
+    <span class="status"><span class="dot" id="dot"></span><span id="api-status">Non connecté</span></span>
+    <input class="inp" id="api-url" placeholder="http://172.x.x.x:3000" style="width:190px">
+    <input class="inp" id="api-token" placeholder="Token JWT" style="width:150px">
+    <button class="btn btn-acc" onclick="loadChannels()">Connecter</button>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n acc" id="s-total">0</div><div class="stat-l">Total chaînes</div></div>
+  <div class="stat"><div class="stat-n green" id="s-free">0</div><div class="stat-l">Gratuites</div></div>
+  <div class="stat"><div class="stat-n gold" id="s-premium">0</div><div class="stat-l">Premium VIP</div></div>
+  <div class="stat"><div class="stat-n red" id="s-adult">0</div><div class="stat-l">Adult 18+</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="inp" id="search" placeholder="🔍 Rechercher..." oninput="renderTable()">
+  <select class="sel" id="filter-cat" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+  <select class="sel" id="filter-type" onchange="renderTable()">
+    <option value="">Tous types</option>
+    <option value="free">Gratuit</option>
+    <option value="premium">VIP Premium</option>
+    <option value="adult">Adult 18+</option>
+  </select>
+  <button class="btn btn-acc" onclick="openModal()">+ Nouvelle chaîne</button>
+  <button class="btn" onclick="exportSQL()">⬇ Export SQL</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Nom</th><th>Catégorie</th><th>Type</th>
+        <th>Store</th><th>Stream URL</th><th>Ordre</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"><tr><td colspan="8"><div class="empty">Connectez-vous pour charger les chaînes</div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">+ Nouvelle chaîne</h3>
+    <input type="hidden" id="f-id">
+    <div class="fr"><label>Nom *</label><input id="f-name" placeholder="Ex: RTG Guinée"></div>
+    <div class="fr"><label>Catégorie *</label>
+      <select id="f-cat">
+        <option>News</option><option>Sports</option><option>Music</option>
+        <option>Divertissement</option><option>Cinéma</option><option>Premium</option>
+        <option>Adult</option><option>Autre</option>
+      </select>
+    </div>
+    <div class="fr"><label>URL Stream HLS/M3U8</label><input id="f-url" placeholder="https://...m3u8"></div>
+    <div class="fr"><label>URL Thumbnail</label><input id="f-thumb" placeholder="https://...jpg"></div>
+    <div class="fr"><label>Ordre</label><input id="f-order" type="number" value="0"></div>
+    <div class="fr chk"><input type="checkbox" id="f-premium"><label for="f-premium">Chaîne Premium VIP</label></div>
+    <div class="fr chk"><input type="checkbox" id="f-store" checked><label for="f-store">Safe pour le Play Store (pas de contenu 18+)</label></div>
+    <div class="fr chk"><input type="checkbox" id="f-active" checked><label for="f-active">Active (visible dans l'app)</label></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-acc" onclick="saveChannel()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let channels = [];
+let editId = null;
+
+const $=id=>document.getElementById(id);
+const getUrl=()=>($('api-url').value||'').replace(/\/$/,'');
+const getTok=()=>$('api-token').value||'';
+
+async function loadChannels(){
+  const url=getUrl(), tok=getTok();
+  if(!url){showToast('⚠ Entrez l\'URL de l\'API');return;}
+  $('api-status').textContent='Connexion...';
+  try{
+    const r=await fetch(url+'/api/channels',{headers:{Authorization:'Bearer '+tok}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    channels=d.channels||[];
+    $('dot').className='dot ok';
+    $('api-status').textContent='Connecté — '+channels.length+' chaînes';
+    updateStats();renderTable();populateCats();
+    showToast('✓ '+channels.length+' chaînes chargées');
+  }catch(e){
+    $('dot').className='dot err';
+    $('api-status').textContent='Erreur: '+e.message;
+    showToast('✗ '+e.message);
+  }
+}
+
+function updateStats(){
+  $('s-total').textContent=channels.length;
+  $('s-free').textContent=channels.filter(c=>!c.is_premium_only&&c.is_safe_for_store).length;
+  $('s-premium').textContent=channels.filter(c=>c.is_premium_only).length;
+  $('s-adult').textContent=channels.filter(c=>!c.is_safe_for_store).length;
+}
+
+function populateCats(){
+  const sel=$('filter-cat');
+  const cats=[...new Set(channels.map(c=>c.category))].sort();
+  sel.innerHTML='<option value="">Toutes catégories</option>';
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+}
+
+function badge(c){
+  if(!c.is_safe_for_store)return'<span class="badge b-adult">18+</span>';
+  if(c.is_premium_only)return'<span class="badge b-vip">★ VIP</span>';
+  return'<span class="badge b-free">Gratuit</span>';
+}
+
+function renderTable(){
+  const q=$('search').value.toLowerCase();
+  const cat=$('filter-cat').value;
+  const type=$('filter-type').value;
+  let list=channels.filter(c=>{
+    const mq=!q||c.name.toLowerCase().includes(q)||c.category.toLowerCase().includes(q);
+    const mc=!cat||c.category===cat;
+    const mt=!type||(type==='free'&&!c.is_premium_only&&c.is_safe_for_store)||(type==='premium'&&c.is_premium_only)||(type==='adult'&&!c.is_safe_for_store);
+    return mq&&mc&&mt;
+  });
+  const tb=$('tbody');
+  if(!list.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">Aucune chaîne trouvée</div></td></tr>';return;}
+  tb.innerHTML=list.map(c=>`
+    <tr>
+      <td style="color:var(--text3);font-size:11px">${c.id}</td>
+      <td style="font-weight:500">${c.name}</td>
+      <td style="color:var(--text2)">${c.category}</td>
+      <td>${badge(c)}</td>
+      <td style="font-size:12px">${c.is_safe_for_store?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'}</td>
+      <td class="url-cell" title="${c.stream_url||''}">${c.stream_url||'<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:var(--text3)">${c.sort_order||0}</td>
+      <td><div class="actions">
+        <button class="btn-sm" onclick="editChannel(${c.id})" title="Modifier">✏️</button>
+        <button class="btn-sm" onclick="testStream('${c.stream_url||''}')" title="Tester">▶</button>
+        <button class="btn-sm btn-del" onclick="deleteChannel(${c.id})" title="Supprimer">✕</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+function openModal(ch){
+  editId=ch?ch.id:null;
+  $('modal-title').textContent=ch?'✏️ Modifier la chaîne':'+ Nouvelle chaîne';
+  $('f-name').value=ch?.name||'';
+  $('f-cat').value=ch?.category||'News';
+  $('f-url').value=ch?.stream_url||'';
+  $('f-thumb').value=ch?.thumbnail_url||'';
+  $('f-order').value=ch?.sort_order||0;
+  $('f-premium').checked=!!ch?.is_premium_only;
+  $('f-store').checked=ch?!!ch.is_safe_for_store:true;
+  $('f-active').checked=ch?!!ch.is_active:true;
+  $('modal').classList.add('open');
+}
+function closeModal(){$('modal').classList.remove('open');}
+
+function saveChannel(){
+  const name=$('f-name').value.trim();
+  if(!name){showToast('⚠ Le nom est obligatoire');return;}
+  const data={
+    id:editId||Date.now(),name,
+    category:$('f-cat').value,
+    stream_url:$('f-url').value.trim()||null,
+    thumbnail_url:$('f-thumb').value.trim()||null,
+    sort_order:parseInt($('f-order').value)||0,
+    is_premium_only:$('f-premium').checked,
+    is_safe_for_store:$('f-store').checked,
+    is_active:$('f-active').checked,
+  };
+  if(editId){const i=channels.findIndex(c=>c.id===editId);if(i>=0)channels[i]=data;}
+  else channels.push(data);
+  updateStats();renderTable();populateCats();closeModal();
+  genSQL(data,!editId);
+}
+
+function genSQL(ch,isInsert){
+  const v=s=>s?`'${s.replace(/'/g,"''")}'`:'NULL';
+  const sql=isInsert
+    ?`INSERT INTO channels (name,category,stream_url,thumbnail_url,is_premium_only,is_safe_for_store,is_active,sort_order) VALUES (${v(ch.name)},${v(ch.category)},${v(ch.stream_url)},${v(ch.thumbnail_url)},${ch.is_premium_only?1:0},${ch.is_safe_for_store?1:0},${ch.is_active?1:0},${ch.sort_order});`
+    :`UPDATE channels SET name=${v(ch.name)},category=${v(ch.category)},stream_url=${v(ch.stream_url)},thumbnail_url=${v(ch.thumbnail_url)},is_premium_only=${ch.is_premium_only?1:0},is_safe_for_store=${ch.is_safe_for_store?1:0},is_active=${ch.is_active?1:0},sort_order=${ch.sort_order} WHERE id=${ch.id};`;
+  navigator.clipboard.writeText(sql).then(()=>showToast('✓ SQL copié dans le presse-papiers'));
+}
+
+function editChannel(id){const ch=channels.find(c=>c.id===id);if(ch)openModal(ch);}
+
+function deleteChannel(id){
+  const ch=channels.find(c=>c.id===id);
+  if(!ch||!confirm('Supprimer "'+ch.name+'" ?'))return;
+  const sql=`DELETE FROM channels WHERE id=${id};`;
+  navigator.clipboard.writeText(sql).then(()=>showToast('✓ SQL DELETE copié'));
+  channels=channels.filter(c=>c.id!==id);
+  updateStats();renderTable();populateCats();
+}
+
+function testStream(url){
+  if(!url){showToast('⚠ Pas d\'URL de stream');return;}
+  window.open(url,'_blank');
+}
+
+function exportSQL(){
+  if(!channels.length){showToast('⚠ Aucune chaîne à exporter');return;}
+  const v=s=>s?`'${s.replace(/'/g,"''")}'`:'NULL';
+  const sql='-- VagueTV Export\nDELETE FROM channels;\n\n'+
+    channels.map(c=>`INSERT INTO channels (name,category,stream_url,thumbnail_url,is_premium_only,is_safe_for_store,is_active,sort_order) VALUES (${v(c.name)},${v(c.category)},${v(c.stream_url)},${v(c.thumbnail_url)},${c.is_premium_only?1:0},${c.is_safe_for_store?1:0},${c.is_active?1:0},${c.sort_order});`).join('\n');
+  navigator.clipboard.writeText(sql).then(()=>showToast('✓ Export SQL complet copié !'));
+}
+
+function showToast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal();});
+</script>
